@@ -68,7 +68,7 @@ class Sim {
     this.quake = 0; this.glitch = 0; this.fireFloor = null;
     this.erupt = { frames: 0, x: 0, power: 1 };
     this.wave = { frames: 0, dir: 1, len: 1 };
-    this.twist = { frames: 0, x: 0, vx: 0 };
+    this.twist = { frames: 0, x: 0, vx: 0, power: 1 };
     this.bolts = [];
     this.density = 1;       // fraction of image pixels kept
     this.events = [];       // log hook: the UI reads and clears this
@@ -402,7 +402,7 @@ class Sim {
       tw.frames--;
       tw.vx += (R() - 0.5) * 0.15; tw.vx *= 0.98;
       tw.x += tw.vx; if (tw.x < 5 || tw.x > w - 5) tw.vx *= -1;
-      for (let k = 0; k < 70; k++) {
+      for (let k = 0; k < 70 * tw.power; k++) {
         const y = (R() * h) | 0;
         const rad = 2 + (1 - y / h) * 14;
         const x = (tw.x + (R() - 0.5) * 2 * rad) | 0;
@@ -489,9 +489,23 @@ class Sim {
   }
 
   // ------------------------------------------------- triggers (public)
-  log(s) { this.events.push(s); }
+  // Log a line, but only once per kind of event every 1.2 s.
+  log(s) {
+    const key = s.split('  ')[0], now = performance.now();
+    this.lastLog = this.lastLog || {};
+    if (this.lastLog[key] && now - this.lastLog[key] < 1200) return;
+    this.lastLog[key] = now; this.events.push(s);
+  }
 
-  shake(a = 0.7) { this.quake = Math.min(1.2, this.quake + a); this.log('SEISMIC EVENT  M' + (4 + a * 4).toFixed(1)); }
+  rainBurst(k = 1) {
+    const n = (this.w * 0.12 * k) | 0;
+    for (let j = 0; j < n; j++) {
+      const x = (R() * this.w) | 0, y = (R() * 3) | 0, i = y * this.w + x;
+      if (this.mat[i] === 0) this.set(i, M.WATER, C.water());
+    }
+  }
+
+  shake(a = 0.7, quiet) { this.quake = Math.min(1.2, this.quake + a); if (!quiet || a > 0.5) this.log('SEISMIC EVENT  M' + (4 + a * 4).toFixed(1)); }
 
   eruption(x, power = 1) {
     if (x === undefined) {
@@ -543,7 +557,7 @@ class Sim {
   }
 
   twister(x) {
-    this.twist = { frames: 420 + R() * 200, x: x === undefined ? this.w * (0.2 + R() * 0.6) : x, vx: (R() - 0.5) * 1.2 };
+    this.twist = { frames: 420 + R() * 200, x: x === undefined ? this.w * (0.2 + R() * 0.6) : x, vx: (R() - 0.5) * 1.2, power: 1 };
     this.log('VORTEX  EF' + ((R() * 5) | 0));
   }
 

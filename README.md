@@ -12,7 +12,7 @@ python3 -m http.server 8000
 
 Then open http://localhost:8000.
 
-- **Load a song** (button, `M`, or drag and drop). The forecast stretches to the length of the track, and the spectrum burns along the floor as red fire columns.
+- **Load a song** (button, `M`, or drag and drop). The song becomes the forecast's timeline: phase changes snap to the track's section changes, and disasters fire on the hits in the matching frequency band (see "Audio" below). The waveform in the side panel shows progress and phase markers; click or drag it to seek, or use the arrow keys to skip 5 s.
 - **Load images** (button, `I`, or drag and drop). Paintings and photos with strong greens, blues and reds work best. Each new scenario cycles through them. Without images, procedural "archive plates" are generated instead.
 
 | Key | Action |
@@ -54,6 +54,24 @@ URL parameters: `?cell=5` sets the cell size in CSS pixels, `?density=0.7` sets 
    - Eruptions, meteor impacts, tsunamis and vortices throw cells as ballistic particles. Those particles re-enter the grid where they land.
 7. **Director** (`src/director.js`). Ten phases run over the song: baseline, precipitation, wildfire, seismic, eruption, impact, surge, vortex, `????`, overgrowth. Bass onsets release cells and shake the ground. High frequencies drive the rain.
 8. **Interface** (`src/overlay.js`). The interface has a dotted grid, live readouts, a typed log, and a "scenario consideration" panel with a diagram for each phase. As the forecast degrades, the readout labels are swapped character by character for devotional phrases, the numbers dissolve, and horizontal smear glitches tear the field.
+
+## Audio
+
+When a song loads it is decoded once. Its waveform is drawn in the panel. A three-band loudness envelope (below 200 Hz, 200 Hz to 3 kHz, above 3 kHz) is used to find section changes, and each scheduled phase boundary moves to the biggest change within about 6% of the song. That way, phases start when the music changes, including changes of sound at the same volume.
+
+While it plays, the spectrum is split into five bands. Each band has a continuous level and its own hit detection. A hit is measured as the energy a band gains in one frame, relative to that band's usual energy. It is credited only to the band where it is strongest, so a hi-hat does not also count as a snare. Routing during autopilot:
+
+| Signal | Continuous effect | Hits (in the phase that listens for them) |
+| --- | --- | --- |
+| SUB 30 to 90 Hz | ground tremor | every kick loosens the image; quakes in SEISMIC; collapse in SURGE |
+| LOW 90 to 300 Hz | eruption strength | new eruptions in ERUPTION |
+| MID 300 Hz to 2 kHz | fire spread (heat) | lightning in WILDFIRE |
+| HIGH 2 to 6 kHz | rainfall | downpours in PRECIPITATION |
+| AIR 6 to 14 kHz | wind | gusts that flip the wind |
+| Loudness | vortex lift; in OVERGROWTH, quieter means faster growth | swells bring surges, drops bring meteors |
+| Spectral flux | image tearing in the late phases | |
+
+During the `????` phase every band triggers its own disaster. Without a song, phases run on a four-minute clock and fire events at random. The panel's signal routing meters show what each band is wired to at any moment.
 
 Files: `src/sim.js` (simulation), `src/plates.js` (procedural source images), `src/audio.js`, `src/director.js`, `src/overlay.js`, `src/main.js` (rendering, input, recording).
 

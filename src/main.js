@@ -24,7 +24,7 @@ function layout() {
   const wide = innerWidth > 1000;
   const barH = document.getElementById('bar').offsetHeight;
   const top = Math.round(wide ? H * 0.03 : 130 * dpr);
-  const bottom = Math.round(wide ? H * 0.13 : (barH + 120) * dpr);
+  const bottom = Math.round(wide ? H * 0.13 : (barH + 180) * dpr);
   const left = Math.round(36 * dpr);
   const panelW = wide ? Math.round(W * 0.27) : 0;
   const fieldW = W - left - (wide ? panelW + 60 * dpr : left);
@@ -193,10 +193,28 @@ function syncBar() {
 addEventListener('keydown', e => {
   if (e.metaKey || e.ctrlKey) return;
   if (e.key === ' ') { paused = !paused; e.preventDefault(); return; }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { A.nudge(e.key === 'ArrowLeft' ? -5 : 5); e.preventDefault(); return; }
   for (const [id, a] of Object.entries(ACTIONS)) if (e.key.toLowerCase() === a.key) { if (a.at) tool = id; a.run(); syncBar(); }
 });
 
+// Seeking: click or drag on the waveform.
+let seeking = false;
+function inTransport(e) {
+  const t = overlay.transport; if (!t || hideUI) return false;
+  const px = e.clientX * dpr, py = e.clientY * dpr;
+  return px >= t.x && px <= t.x + t.w && py >= t.y && py <= t.y + t.h;
+}
+function seekTo(e) { const t = overlay.transport; A.seek((e.clientX * dpr - t.x) / t.w); }
+canvas.addEventListener('pointermove', e => {
+  if (seeking) seekTo(e);
+  canvas.style.cursor = inTransport(e) ? (A.el ? 'ew-resize' : 'pointer') : 'crosshair';
+});
+addEventListener('pointerup', () => { seeking = false; });
 canvas.addEventListener('pointerdown', e => {
+  if (inTransport(e)) {
+    if (!A.el) { document.getElementById('audIn').click(); return; }
+    seeking = true; seekTo(e); return;
+  }
   const gx = ((e.clientX * dpr - rect.x) / cs) | 0;
   if (gx < 0 || gx >= sim.w) return;
   ACTIONS[tool].run(gx);
